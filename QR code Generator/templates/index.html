@@ -1,0 +1,343 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Image QR Code Converter</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --primary: #3b82f6;
+            --primary-hover: #2563eb;
+            --background: #f3f4f6;
+            --foreground: #1f2937;
+            --card: #ffffff;
+            --card-foreground: #374151;
+            --border: #e5e7eb;
+            --input: #ffffff;
+            --ring: #3b82f6;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: var(--background);
+            color: var(--foreground);
+            line-height: 1.5;
+            margin: 0;
+            padding: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+        }
+
+        .container {
+            background-color: var(--card);
+            border-radius: 8px;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+            padding: 2rem;
+            width: 100%;
+            max-width: 500px;
+        }
+
+        h1, h2 {
+            color: var(--card-foreground);
+            font-size: 1.5rem;
+            font-weight: 600;
+            margin-bottom: 1.5rem;
+            text-align: center;
+        }
+
+        h2 {
+            font-size: 1.25rem;
+            margin-top: 2rem;
+        }
+
+        form {
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+        }
+
+        label {
+            font-weight: 600;
+            color: var(--card-foreground);
+        }
+
+        input[type="file"],
+        input[type="text"] {
+            width: 100%;
+            padding: 0.5rem;
+            border: 1px solid var(--border);
+            border-radius: 4px;
+            font-size: 1rem;
+            color: var(--card-foreground);
+            background-color: var(--input);
+        }
+
+        input[type="file"] {
+            padding: 0.5rem 0;
+        }
+
+        input[type="submit"] {
+            background-color: var(--primary);
+            color: white;
+            border: none;
+            padding: 0.75rem 1rem;
+            border-radius: 4px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background-color 0.2s ease;
+        }
+
+        input[type="submit"]:hover {
+            background-color: var(--primary-hover);
+        }
+
+        .loading {
+            display: none;
+            text-align: center;
+            margin-top: 1rem;
+            color: var(--card-foreground);
+            font-weight: 600;
+        }
+
+        .loading::after {
+            content: "...";
+            animation: dots 1s steps(5, end) infinite;
+        }
+
+        @keyframes dots {
+            0%, 20% {
+                color: rgba(0,0,0,0);
+                text-shadow:
+                    .25em 0 0 rgba(0,0,0,0),
+                    .5em 0 0 rgba(0,0,0,0);
+            }
+            40% {
+                color: var(--card-foreground);
+                text-shadow:
+                    .25em 0 0 rgba(0,0,0,0),
+                    .5em 0 0 rgba(0,0,0,0);
+            }
+            60% {
+                text-shadow:
+                    .25em 0 0 var(--card-foreground),
+                    .5em 0 0 rgba(0,0,0,0);
+            }
+            80%, 100% {
+                text-shadow:
+                    .25em 0 0 var(--card-foreground),
+                    .5em 0 0 var(--card-foreground);
+            }
+        }
+
+        #result {
+            margin-top: 1.5rem;
+        }
+
+        #result img {
+            max-width: 100%;
+            height: auto;
+            border-radius: 4px;
+            box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06);
+            margin-bottom: 1rem;
+        }
+
+        #individualQRCodes {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 1rem;
+            margin-top: 1rem;
+        }
+
+        /* Popup styling */
+        #popup {
+            display: none;
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background-color: white;
+            padding: 2rem;
+            border-radius: 8px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            z-index: 1000;
+        }
+
+        #popup h2 {
+            font-size: 1.25rem;
+            margin-bottom: 1rem;
+        }
+
+        #popup p {
+            margin-bottom: 1rem;
+        }
+
+        #popup button {
+            background-color: var(--primary);
+            color: white;
+            padding: 0.75rem 1rem;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-weight: 600;
+        }
+
+        #popup button:hover {
+            background-color: var(--primary-hover);
+        }
+
+        #popup .close-btn {
+            background-color: transparent;
+            color: var(--primary);
+            border: none;
+            font-size: 1.5rem;
+            cursor: pointer;
+            position: absolute;
+            top: 10px;
+            right: 10px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Image QR Code Converter</h1>
+        <form id="uploadForm">
+            <label for="fileInput">Choose an image:</label>
+            <input type="file" id="fileInput" name="file" accept="image/*" required>
+            <label for="customName">Custom name (optional):</label>
+            <input type="text" id="customName" name="customName" placeholder="Enter a custom name">
+            <input type="submit" value="Upload and Convert">
+        </form>
+        <div id="loading" class="loading" aria-live="polite">Converting image</div>
+        <div id="result" aria-live="polite"></div>
+    </div>
+
+    <!-- Popup for showing token -->
+    <div id="popup">
+        <button class="close-btn" onclick="closePopup()">×</button>
+        <h2>Share the token with the desired user</h2>
+        <p id="tokenText"></p>
+        <button id="copyButton" onclick="copyToClipboard()">Copy Token</button>
+    </div>
+
+    <h2>Upload QR Code and Token for Decoding</h2>
+    <form id="decodeForm" enctype="multipart/form-data">
+        <label for="decodeFileInput">Choose a QR code image:</label>
+        <input type="file" id="decodeFileInput" name="file" accept="image/*" required>
+        <label for="tokenInput">Enter Token:</label>
+        <input type="text" id="tokenInput" name="token" placeholder="Enter the token" required>
+        <input type="submit" value="Decode QR Code">
+    </form>
+
+    <div id="decodeResult" aria-live="polite"></div>
+
+    <script>
+        document.getElementById('uploadForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const formData = new FormData(e.target);
+            const loading = document.getElementById('loading');
+            const result = document.getElementById('result');
+            
+            loading.style.display = 'block';
+            result.innerHTML = '';
+
+            try {
+                const response = await fetch('/upload', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                if (response.ok) {
+                    const data = await response.json();
+                    if (data.qrCode && data.token) {
+                        // Display the token in a popup
+                        showPopup(data.token);
+
+                        // Display combined QR code
+                        const combinedQRHeader = document.createElement('h2');
+                        combinedQRHeader.textContent = 'Combined QR Code';
+                        result.appendChild(combinedQRHeader);
+
+                        // Create an image element and set the src to the base64 QR code
+                        const combinedQRImg = document.createElement('img');
+                        combinedQRImg.src = "data:image/png;base64," + data.qrCode; // Base64 image
+                        combinedQRImg.alt = 'Combined QR Code';
+                        result.appendChild(combinedQRImg);
+
+                        // Add a download button for the QR code
+                        const downloadButton = document.createElement('button');
+                        downloadButton.textContent = 'Download QR Code';
+                        downloadButton.onclick = () => downloadQRCode(data.qrCode);
+                        result.appendChild(downloadButton);
+                    } else {
+                        result.textContent = 'Error: Unexpected response structure';
+                    }
+                } else {
+                    const errorData = await response.json();
+                    result.textContent = `Error: ${errorData.error}`;
+                }
+            } catch (error) {
+                result.textContent = `Error: ${error.message}`;
+            } finally {
+                loading.style.display = 'none';
+            }
+        });
+
+        function showPopup(token) {
+            document.getElementById('tokenText').textContent = token;
+            document.getElementById('popup').style.display = 'block';
+        }
+
+        function closePopup() {
+            document.getElementById('popup').style.display = 'none';
+        }
+
+        function copyToClipboard() {
+            const tokenText = document.getElementById('tokenText').textContent;
+            navigator.clipboard.writeText(tokenText)
+                .then(() => alert('Token copied to clipboard!'))
+                .catch(err => alert('Failed to copy token: ' + err));
+        }
+
+        function downloadQRCode(qrCodeBase64) {
+            const link = document.createElement('a');
+            link.href = "data:image/png;base64," + qrCodeBase64; // Use the base64 string for downloading
+            link.download = 'qr_code.png';
+            link.click();
+        }
+
+        // Handle form submission for decoding
+        document.getElementById('decodeForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const formData = new FormData(e.target);
+            const result = document.getElementById('decodeResult');
+            result.innerHTML = '';
+
+            try {
+                const response = await fetch('/decode', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                if (response.ok) {
+                    const blob = await response.blob();
+                    const imgURL = URL.createObjectURL(blob);
+
+                    const imgElement = document.createElement('img');
+                    imgElement.src = imgURL;
+                    imgElement.alt = 'Decoded Image';
+                    result.appendChild(imgElement);
+                } else {
+                    const errorData = await response.json();
+                    result.textContent = `Error: ${errorData.error}`;
+                }
+            } catch (error) {
+                result.textContent = `Error: ${error.message}`;
+            }
+        });
+    </script>
+</body>
+</html>
